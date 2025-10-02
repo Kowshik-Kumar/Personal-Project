@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Travel Booking & Management</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            margin: 0;
+            background: #f4f8fb;
+            color: #222;
+        }
+        header {
+            background: #1976d2;
+            color: #fff;
+            padding: 1.5rem 1rem;
+            text-align: center;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            background: #1565c0;
+            padding: 0.5rem 0;
+        }
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        .hero {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .hero-text {
+            flex: 1 1 300px;
+        }
+        .hero img {
+            max-width: 350px;
+            width: 100%;
+            border-radius: 8px;
+        }
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .search-form input, .search-form select, .search-form button {
+            padding: 0.7rem;
+            border: 1px solid #bdbdbd;
+            border-radius: 4px;
+            font-size: 1rem;
+            min-width: 160px;
+            box-sizing: border-box;
+        }
+        .search-form button {
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-form button:hover {
+            background: #1565c0;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .feature-card {
+            flex: 1 1 220px;
+            background: #e3f2fd;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.07);
+        }
+        .feature-card h3 {
+            margin-top: 0.5rem;
+            color: #1976d2;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background: #1976d2;
+            color: #fff;
+            margin-top: 2rem;
+        }
+        @media (max-width: 800px) {
+            .hero {
+                flex-direction: column;
+                text-align: center;
+            }
+            .features {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Smart Travel Booking & Management</h1>
+        <p>Your budget-friendly travel companion</p>
+    </header>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Book</a>
+        <a href="#">Manage Trips</a>
+        <a href="#">Deals</a>
+        <a href="#">Support</a>
+    </nav>
+    <div class="container">
+        <section class="hero">
+            <div class="hero-text">
+                <h2>Plan, Book, and Manage Your Trips Smartly</h2>
+                <p>Discover affordable travel options, manage your itineraries, and unlock exclusive deals tailored for budget-conscious travelers.</p>
+            </div>
+            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80" alt="Travel">
+        </section>
+        <form class="search-form">
+            <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 160px;">
+                <label style="font-size: 0.95rem; color: #1976d2; font-weight: 500;">From</label>
+                <input type="text" placeholder="From Location" required>
+                <input type="date" required>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 160px;">
+                <label style="font-size: 0.95rem; color: #1976d2; font-weight: 500;">To</label>
+                <input type="text" placeholder="To Location" required>
+                <input type="date" required>
+            </div>
+            <select>
+                <option value="">Travel Type</option>
+                <option value="flight">Flight</option>
+                <option value="train">Train</option>
+                <option value="bus">Bus</option>
+            </select>
+            <button type="submit">Search</button>
+        </form>
+        <section class="features">
+            <div class="feature-card">
+                <h3>Budget Planner</h3>
+                <p>Set your budget and get the best travel options within your range.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Smart Recommendations</h3>
+                <p>Personalized suggestions based on your preferences and past trips.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Easy Management</h3>
+                <p>View, modify, or cancel your bookings anytime, anywhere.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Exclusive Deals</h3>
+                <p>Access special discounts and last-minute offers for budget travelers.</p>
+            </div>
+        </section>
+    </div>
+    <footer>
+        &copy; 2024 Smart Travel Booking Platform. All rights reserved.
+    </footer>
+</body>
+</html>
