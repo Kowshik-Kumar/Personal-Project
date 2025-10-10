@@ -134,18 +134,18 @@
             </div>
             <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80" alt="Travel">
         </section>
-        <form class="search-form">
+        <form class="search-form" id="search-form">
             <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 160px;">
                 <label style="font-size: 0.95rem; color: #1976d2; font-weight: 500;">From</label>
-                <input type="text" placeholder="From Location" required>
-                <input type="date" required>
+                <input type="text" placeholder="From Location" id="from-location" required>
+                <input type="date" id="from-date" required>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 160px;">
                 <label style="font-size: 0.95rem; color: #1976d2; font-weight: 500;">To</label>
-                <input type="text" placeholder="To Location" required>
-                <input type="date" required>
+                <input type="text" placeholder="To Location" id="to-location" required>
+                <input type="date" id="to-date" required>
             </div>
-            <select>
+            <select id="travel-type">
                 <option value="">Travel Type</option>
                 <option value="flight">Flight</option>
                 <option value="train">Train</option>
@@ -175,5 +175,44 @@
     <footer>
         &copy; 2024 Smart Travel Booking Platform. All rights reserved.
     </footer>
+
+    <script>
+        document.getElementById('search-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const fromLocation = document.getElementById('from-location').value;
+            const fromDate = document.getElementById('from-date').value;
+            const toLocation = document.getElementById('to-location').value;
+            const toDate = document.getElementById('to-date').value;
+            const travelType = document.getElementById('travel-type').value;
+
+            const bookingData = {
+                from_location: fromLocation,
+                from_date: fromDate,
+                to_location: toLocation,
+                to_date: toDate,
+                travel_type: travelType
+            };
+
+            try {
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                if (response.ok) {
+                    alert('Booking created successfully!');
+                } else {
+                    alert('Error creating booking.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while booking.');
+            }
+        });
+    </script>
 </body>
 </html>
