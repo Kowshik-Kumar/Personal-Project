@@ -1,5 +1,63 @@
 const db = require('../db/pool');
 
+/**
+ * booking fields (db/schema.sql):
+ * id, user_id, from_location, to_location, travel_type, departure_date, return_date, created_at
+ */
+
+const BookingModel = {
+    async create({ user_id, from_location, to_location, travel_type, departure_date, return_date }) {
+        const sql = `
+            INSERT INTO bookings (user_id, from_location, to_location, travel_type, departure_date, return_date)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        `;
+        const params = [user_id, from_location, to_location, travel_type, departure_date, return_date];
+        const result = await db.query(sql, params);
+        return result.rows[0];
+    },
+
+    async findAll() {
+        const sql = 'SELECT * FROM bookings ORDER BY id DESC';
+        const result = await db.query(sql);
+        return result.rows;
+    },
+
+    async findById(id) {
+        const sql = 'SELECT * FROM bookings WHERE id = $1';
+        const result = await db.query(sql, [id]);
+        return result.rows[0] || null;
+    },
+
+    async update(id, updates) {
+        // Only allow updating a subset of fields
+        const allowed = ['from_location', 'to_location', 'travel_type', 'departure_date', 'return_date'];
+        const setParts = [];
+        const params = [];
+        let idx = 1;
+        for (const key of allowed) {
+            if (updates[key] !== undefined) {
+                setParts.push(`${key} = $${idx}`);
+                params.push(updates[key]);
+                idx++;
+            }
+        }
+        if (!setParts.length) return await this.findById(id);
+        params.push(id);
+        const sql = `UPDATE bookings SET ${setParts.join(', ')} WHERE id = $${idx} RETURNING *`;
+        const result = await db.query(sql, params);
+        return result.rows[0];
+    },
+
+    async delete(id) {
+        await db.query('DELETE FROM bookings WHERE id = $1', [id]);
+        return true;
+    }
+};
+
+module.exports = BookingModel;
+const db = require('../db/pool');
+
 class Booking {
     constructor(id, userId, tripId, bookingDate, status) {
         this.id = id;

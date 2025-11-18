@@ -1,81 +1,78 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const { randomUUID } = require('crypto');
-
 const router = express.Router();
+const Booking = require('../models/bookingModel');
 
-// Simple JSON file persistence (backend/data/bookings.json)
-const dataDir = path.join(__dirname, '..', '..', 'data');
-const dbFile = path.join(dataDir, 'bookings.json');
-
-async function ensureDataFile() {
-    try {
-        await fs.promises.mkdir(dataDir, { recursive: true });
-        try {
-            await fs.promises.access(dbFile);
-        } catch (e) {
-            await fs.promises.writeFile(dbFile, JSON.stringify([]), 'utf8');
-        }
-    } catch (err) {
-        console.error('Error ensuring data file:', err);
-        throw err;
-    }
-}
-
-async function readBookings() {
-    await ensureDataFile();
-    const raw = await fs.promises.readFile(dbFile, 'utf8');
-    try {
-        return JSON.parse(raw || '[]');
-    } catch (e) {
-        return [];
-    }
-}
-
-async function writeBookings(bookings) {
-    await ensureDataFile();
-    await fs.promises.writeFile(dbFile, JSON.stringify(bookings, null, 2), 'utf8');
-}
+// Note: schema requires user_id NOT NULL. For guests we use user_id = 1 by default.
+const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID ? parseInt(process.env.DEFAULT_USER_ID, 10) : 1;
 
 // Create booking (POST /api/bookings)
 router.post('/', async (req, res) => {
     try {
-        const { from_location, to_location, from_date, to_date, travel_type } = req.body;
+        const { from_location, to_location, from_date, to_date, travel_type, user_id } = req.body;
 
         if (!from_location || !to_location || !from_date || !to_date) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        const bookings = await readBookings();
-        const newBooking = {
-            id: randomUUID(),
+        const bookingData = {
+            user_id: user_id ? parseInt(user_id, 10) : DEFAULT_USER_ID,
             from_location,
             to_location,
-            from_date,
-            to_date,
             travel_type: travel_type || null,
-            created_at: new Date().toISOString()
+            departure_date: from_date,
+            return_date: to_date,
         };
 
-        bookings.push(newBooking);
-        await writeBookings(bookings);
-
-        return res.status(201).json(newBooking);
+        const created = await Booking.create(bookingData);
+        return res.status(201).json(created);
     } catch (error) {
         console.error('Error creating booking:', error);
-        return res.status(500).json({ message: 'Error creating booking' });
+        return res.status(500).json({ message: 'Error creating booking', error: error.message });
     }
 });
 
 // List bookings (GET /api/bookings)
 router.get('/', async (req, res) => {
     try {
-        const bookings = await readBookings();
-        return res.status(200).json(bookings.reverse()); // latest first
+        const rows = await Booking.findAll();
+        return res.status(200).json(rows);
     } catch (error) {
-        console.error('Error reading bookings:', error);
-        return res.status(500).json({ message: 'Error reading bookings' });
+        console.error('Error fetching bookings:', error);
+        return res.status(500).json({ message: 'Error fetching bookings', error: error.message });
+    }
+});
+
+// Simple get by id
+router.get('/:id', async (req, res) => {
+    try {
+        const booking = await Booking.findById(req.params.id);
+        if (!booking) return res.status(404).json({ message: 'Not found' });
+        return res.json(booking);
+    } catch (error) {
+        console.error('Error fetching booking:', error);
+        return res.status(500).json({ message: 'Error', error: error.message });
+    }
+});
+
+// Update booking
+router.put('/:id', async (req, res) => {
+    try {
+        const updated = await Booking.update(req.params.id, req.body);
+        return res.json(updated);
+    } catch (error) {
+        console.error('Error updating booking:', error);
+        return res.status(500).json({ message: 'Error', error: error.message });
+    }
+});
+
+// Delete booking
+router.delete('/:id', async (req, res) => {
+    try {
+        await Booking.delete(req.params.id);
+        return res.status(204).send();
+    } catch (error) {
+        console.error('Error deleting booking:', error);
+        return res.status(500).json({ message: 'Error', error: error.message });
     }
 });
 
