@@ -1,57 +1,82 @@
-class BookingsController {
-    constructor(bookingModel) {
-        this.bookingModel = bookingModel;
-    }
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const { randomUUID } = require('crypto');
 
-    async createBooking(req, res) {
-        try {
-            const bookingData = req.body;
-            const newBooking = await this.bookingModel.create(bookingData);
-            res.status(201).json(newBooking);
-        } catch (error) {
-            res.status(500).json({ message: 'Error creating booking', error });
-        }
-    }
+const router = express.Router();
 
-    async getBooking(req, res) {
-        try {
-            const { id } = req.params;
-            const booking = await this.bookingModel.findById(id);
-            if (!booking) {
-                return res.status(404).json({ message: 'Booking not found' });
-            }
-            res.status(200).json(booking);
-        } catch (error) {
-            res.status(500).json({ message: 'Error retrieving booking', error });
-        }
-    }
+// Simple JSON file persistence (backend/data/bookings.json)
+const dataDir = path.join(__dirname, '..', '..', 'data');
+const dbFile = path.join(dataDir, 'bookings.json');
 
-    async updateBooking(req, res) {
+async function ensureDataFile() {
+    try {
+        await fs.promises.mkdir(dataDir, { recursive: true });
         try {
-            const { id } = req.params;
-            const bookingData = req.body;
-            const updatedBooking = await this.bookingModel.update(id, bookingData);
-            if (!updatedBooking) {
-                return res.status(404).json({ message: 'Booking not found' });
-            }
-            res.status(200).json(updatedBooking);
-        } catch (error) {
-            res.status(500).json({ message: 'Error updating booking', error });
+            await fs.promises.access(dbFile);
+        } catch (e) {
+            await fs.promises.writeFile(dbFile, JSON.stringify([]), 'utf8');
         }
-    }
-
-    async deleteBooking(req, res) {
-        try {
-            const { id } = req.params;
-            const deleted = await this.bookingModel.delete(id);
-            if (!deleted) {
-                return res.status(404).json({ message: 'Booking not found' });
-            }
-            res.status(204).send();
-        } catch (error) {
-            res.status(500).json({ message: 'Error deleting booking', error });
-        }
+    } catch (err) {
+        console.error('Error ensuring data file:', err);
+        throw err;
     }
 }
 
-export default BookingsController;
+async function readBookings() {
+    await ensureDataFile();
+    const raw = await fs.promises.readFile(dbFile, 'utf8');
+    try {
+        return JSON.parse(raw || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+async function writeBookings(bookings) {
+    await ensureDataFile();
+    await fs.promises.writeFile(dbFile, JSON.stringify(bookings, null, 2), 'utf8');
+}
+
+// Create booking (POST /api/bookings)
+router.post('/', async (req, res) => {
+    try {
+        const { from_location, to_location, from_date, to_date, travel_type } = req.body;
+
+        if (!from_location || !to_location || !from_date || !to_date) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        const bookings = await readBookings();
+        const newBooking = {
+            id: randomUUID(),
+            from_location,
+            to_location,
+            from_date,
+            to_date,
+            travel_type: travel_type || null,
+            created_at: new Date().toISOString()
+        };
+
+        bookings.push(newBooking);
+        await writeBookings(bookings);
+
+        return res.status(201).json(newBooking);
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        return res.status(500).json({ message: 'Error creating booking' });
+    }
+});
+
+// List bookings (GET /api/bookings)
+router.get('/', async (req, res) => {
+    try {
+        const bookings = await readBookings();
+        return res.status(200).json(bookings.reverse()); // latest first
+    } catch (error) {
+        console.error('Error reading bookings:', error);
+        return res.status(500).json({ message: 'Error reading bookings' });
+    }
+});
+
+module.exports = router;
