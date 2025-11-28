@@ -127,6 +127,16 @@
         <a href="#">Support</a>
     </nav>
     <div class="container">
+        <div id="auth-section" style="display:flex;justify-content:flex-end;gap:0.8rem;align-items:center;margin-bottom:1rem;">
+            <div id="auth-info" style="display:flex;gap:0.6rem;align-items:center;">
+                <input id="auth-username" placeholder="Username" style="padding:0.5rem;border-radius:4px;border:1px solid #ccc;">
+                <input id="auth-password" type="password" placeholder="Password" style="padding:0.5rem;border-radius:4px;border:1px solid #ccc;">
+                <button id="btn-register" style="padding:0.5rem 0.8rem;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer;">Register</button>
+                <button id="btn-login" style="padding:0.5rem 0.8rem;background:#0b8043;color:#fff;border:none;border-radius:4px;cursor:pointer;">Login</button>
+                <button id="btn-profile" style="padding:0.5rem 0.8rem;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer;display:none;">My Profile</button>
+            </div>
+            <div id="auth-status" style="font-size:0.95rem;color:#1976d2;"></div>
+        </div>
         <section class="hero">
             <div class="hero-text">
                 <h2>Plan, Book, and Manage Your Trips Smartly</h2>
@@ -153,6 +163,9 @@
             </select>
             <button type="submit">Search</button>
         </form>
+        <section id="search-results" style="margin-top:1rem;">
+            <!-- Search results will be rendered here -->
+        </section>
         <section class="features">
             <div class="feature-card">
                 <h3>Budget Planner</h3>
@@ -171,48 +184,395 @@
                 <p>Access special discounts and last-minute offers for budget travelers.</p>
             </div>
         </section>
+        <section class="container" id="bookings-section" style="margin-top:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+                <h2 style="color:#1976d2;margin:0;">Your Bookings</h2>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <label style="font-size:0.95rem;color:#1976d2;margin:0;">Filter:</label>
+                    <select id="bookings-filter" style="padding:0.4rem;border-radius:4px;border:1px solid #ccc;background:#fff;">
+                        <option value="all">All</option>
+                        <option value="today">Today's Bookings</option>
+                    </select>
+                </div>
+            </div>
+            <div id="bookings-list" style="display:flex;flex-direction:column;gap:0.8rem;margin-top:0.8rem;"></div>
+        </section>
     </div>
     <footer>
         &copy; 2024 Smart Travel Booking Platform. All rights reserved.
     </footer>
 
     <script>
+        async function renderBookings(filter = 'all') {
+            try {
+                const res = await fetch('/api/bookings');
+                if (!res.ok) return;
+                const bookings = await res.json();
+                const listEl = document.getElementById('bookings-list');
+                listEl.innerHTML = '';
+                if (!bookings || bookings.length === 0) {
+                    listEl.innerHTML = '<div style="color:#666">No bookings yet.</div>';
+                    return;
+                }
+
+                // Optionally filter bookings to today's date
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayStr = `${yyyy}-${mm}-${dd}`;
+
+                bookings.forEach(b => {
+                    if (filter === 'today') {
+                        const dep = b.departure_date || b.from_date;
+                        if (!dep) return; // skip if no date
+                        // Normalize to YYYY-MM-DD
+                        const depDate = (dep || '').slice(0, 10);
+                        if (depDate !== todayStr) return; // skip non-today
+                    }
+                    const card = document.createElement('div');
+                    card.style.padding = '0.8rem';
+                    card.style.border = '1px solid #e0e0e0';
+                    card.style.borderRadius = '6px';
+                    card.style.background = '#fafafa';
+                    card.innerHTML = `
+                        <strong>${b.from_location} → ${b.to_location}</strong>
+                        <div style="color:#555; font-size:0.95rem">Departure: ${b.departure_date || b.from_date} • Return: ${b.return_date || b.to_date}</div>
+                        <div style="color:#777; font-size:0.85rem">Type: ${b.travel_type || 'N/A'} • Created: ${new Date(b.created_at || b.createdAt || b.created_at).toLocaleString()}</div>
+                    `;
+                    listEl.appendChild(card);
+                });
+            } catch (err) {
+                console.error('Could not load bookings', err);
+            }
+        }
+
+        // Ensure date inputs cannot select past dates; allow today
+        function setDateInputsMinToToday() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+            const fromDate = document.getElementById('from-date');
+            const toDate = document.getElementById('to-date');
+            if (fromDate) fromDate.setAttribute('min', todayStr);
+            if (toDate) toDate.setAttribute('min', todayStr);
+        }
+
+        // Update list when filter changes
+        document.getElementById('bookings-filter').addEventListener('change', (e) => {
+            renderBookings(e.target.value);
+        });
+
+        setDateInputsMinToToday();
+
+        // Search handler: generate options and render them; booking occurs by pressing Book on a result
         document.getElementById('search-form').addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const fromLocation = document.getElementById('from-location').value;
+            const fromLocation = document.getElementById('from-location').value.trim();
             const fromDate = document.getElementById('from-date').value;
-            const toLocation = document.getElementById('to-location').value;
+            const toLocation = document.getElementById('to-location').value.trim();
             const toDate = document.getElementById('to-date').value;
             const travelType = document.getElementById('travel-type').value;
 
+            if (!fromLocation || !toLocation || !fromDate) {
+                return alert('Please fill From, To and Departure date to search.');
+            }
+
+            const results = generateOptions(fromLocation, toLocation, fromDate, toDate);
+            renderSearchResults(results, travelType);
+        });
+
+        // Generate demo options (flights, trains, buses) with prices
+        function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+        function generateOptions(from, to, depDate, retDate) {
+            const flights = [];
+            const trains = [];
+            const buses = [];
+
+            const flightOperators = ['AirIndia', 'IndiGo', 'SpiceJet', 'Vistara'];
+            const trainOperators = ['Rajdhani Express', 'Shatabdi Express', 'Duronto', 'Intercity'];
+            const busOperators = ['RedBus', 'Volvo Travels', 'State Express', 'Private Coach'];
+
+            for (let i = 0; i < 3; i++) {
+                flights.push({
+                    id: 'F' + Date.now() + i,
+                    operator: flightOperators[i % flightOperators.length],
+                    duration: `${rand(1,3)}h ${rand(0,59)}m`,
+                    price: rand(2500, 9000),
+                    depart: `${depDate}T0${8+i}:00`
+                });
+                trains.push({
+                    id: 'T' + Date.now() + i,
+                    operator: trainOperators[i % trainOperators.length],
+                    duration: `${rand(3,12)}h ${rand(0,59)}m`,
+                    price: rand(300, 1800),
+                    depart: `${depDate}T0${6+i}:00`
+                });
+                buses.push({
+                    id: 'B' + Date.now() + i,
+                    operator: busOperators[i % busOperators.length],
+                    duration: `${rand(4,10)}h ${rand(0,59)}m`,
+                    price: rand(200, 900),
+                    depart: `${depDate}T0${7+i}:00`
+                });
+            }
+
+            return { flights, trains, buses, from, to, depDate, retDate };
+        }
+
+        function renderSearchResults(results, preferred = '') {
+            const container = document.getElementById('search-results');
+            container.innerHTML = '';
+            const types = [
+                { key: 'flights', label: 'Flights' },
+                { key: 'trains', label: 'Trains' },
+                { key: 'buses', label: 'Buses' }
+            ];
+
+            types.forEach(type => {
+                const section = document.createElement('div');
+                section.style.marginBottom = '1rem';
+
+                const title = document.createElement('h3');
+                title.textContent = type.label;
+                title.style.color = '#1976d2';
+                section.appendChild(title);
+
+                const list = document.createElement('div');
+                list.style.display = 'flex';
+                list.style.flexWrap = 'wrap';
+                list.style.gap = '0.8rem';
+
+                (results[type.key] || []).forEach(opt => {
+                    const card = document.createElement('div');
+                    card.style.width = '300px';
+                    card.style.padding = '0.8rem';
+                    card.style.border = preferred.toLowerCase() === type.key.slice(0,-1) ? '2px solid #1976d2' : '1px solid #e0e0e0';
+                    card.style.borderRadius = '6px';
+                    card.style.background = '#fff';
+                    card.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
+                    card.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <strong>${opt.operator}</strong>
+                            <div style="font-weight:700;color:#1976d2;">₹${opt.price}</div>
+                        </div>
+                        <div style="color:#555;font-size:0.95rem;margin-top:0.4rem">${results.from} → ${results.to}</div>
+                        <div style="color:#777;font-size:0.9rem;margin-top:0.2rem">Depart: ${opt.depart.slice(0,16).replace('T',' ')}</div>
+                        <div style="color:#777;font-size:0.9rem">Duration: ${opt.duration}</div>
+                    `;
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Book';
+                    btn.style.marginTop = '0.6rem';
+                    btn.style.padding = '0.5rem 0.7rem';
+                    btn.style.background = '#1976d2';
+                    btn.style.color = '#fff';
+                    btn.style.border = 'none';
+                    btn.style.borderRadius = '4px';
+                    btn.style.cursor = 'pointer';
+                    btn.addEventListener('click', () => bookOption(results, type.key.slice(0,-1), opt));
+                    card.appendChild(btn);
+                    list.appendChild(card);
+                });
+
+                section.appendChild(list);
+                container.appendChild(section);
+            });
+            // scroll to results
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function bookOption(results, transportType, opt) {
+            const token = localStorage.getItem('token');
+            if (!token) return alert('Please login/register to book.');
+
             const bookingData = {
-                from_location: fromLocation,
-                from_date: fromDate,
-                to_location: toLocation,
-                to_date: toDate,
-                travel_type: travelType
+                from_location: results.from,
+                from_date: results.depDate,
+                to_location: results.to,
+                to_date: results.retDate || results.depDate,
+                travel_type: transportType,
+                option_operator: opt.operator,
+                option_price: opt.price,
+                option_duration: opt.duration
             };
 
             try {
-                const response = await fetch('/api/bookings', {
+                const res = await fetch('/api/bookings', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify(bookingData)
                 });
-
-                if (response.ok) {
-                    alert('Booking created successfully!');
+                if (res.ok) {
+                    const created = await res.json();
+                    const okEl = document.createElement('div');
+                    okEl.style.background = '#e8f5e9';
+                    okEl.style.color = '#2e7d32';
+                    okEl.style.padding = '0.6rem';
+                    okEl.style.borderRadius = '4px';
+                    okEl.style.marginTop = '0.6rem';
+                    okEl.textContent = `Booked ${transportType} with ${opt.operator} for ₹${opt.price}`;
+                    document.querySelector('.container').prepend(okEl);
+                    setTimeout(() => okEl.remove(), 4000);
+                    // Refresh booking list
+                    await renderBookings();
+                    // clear search results
+                    document.getElementById('search-results').innerHTML = '';
                 } else {
-                    alert('Error creating booking.');
+                    const txt = await res.text();
+                    alert('Booking failed: ' + (txt || res.statusText));
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while booking.');
+            } catch (err) {
+                console.error('Booking error', err);
+                alert('Booking failed');
+            }
+        }
+
+        // Load bookings on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBookings();
+        });
+
+        // Auth functions
+        function setAuthStatus(user) {
+            const status = document.getElementById('auth-status');
+            if (user && user.username) {
+                status.textContent = `Signed in as ${user.username}`;
+                // hide inputs
+                document.getElementById('auth-username').style.display = 'none';
+                document.getElementById('auth-password').style.display = 'none';
+                document.getElementById('btn-register').style.display = 'none';
+                document.getElementById('btn-login').textContent = 'Logout';
+            } else {
+                status.textContent = '';
+                document.getElementById('auth-username').style.display = '';
+                document.getElementById('auth-password').style.display = '';
+                document.getElementById('btn-register').style.display = '';
+                document.getElementById('btn-login').textContent = 'Login';
+            }
+        }
+
+        async function registerUser() {
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (!username || !password) return alert('Enter username and password');
+            try {
+                const res = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const token = data.token;
+                    const user = data.user;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userId', user.id);
+                    localStorage.setItem('username', user.username);
+                    setAuthStatus(user);
+                    document.getElementById('btn-profile').style.display = '';
+                    alert('Registered and signed in');
+                } else {
+                    const txt = await res.text();
+                    alert('Register failed: ' + (txt || res.statusText));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error registering');
+            }
+        }
+
+        async function loginOrLogout() {
+            const btn = document.getElementById('btn-login');
+            if (btn.textContent === 'Logout') {
+                localStorage.removeItem('userId');
+                localStorage.removeItem('username');
+                localStorage.removeItem('token');
+                setAuthStatus(null);
+                document.getElementById('btn-profile').style.display = 'none';
+                return;
+            }
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (!username || !password) return alert('Enter username and password');
+            try {
+                const res = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const token = data.token;
+                    const user = data.user;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userId', user.id);
+                    localStorage.setItem('username', user.username);
+                    setAuthStatus(user);
+                    document.getElementById('btn-profile').style.display = '';
+                    alert('Signed in');
+                } else {
+                    const txt = await res.text();
+                    alert('Login failed: ' + (txt || res.statusText));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error logging in');
+            }
+        }
+
+        document.getElementById('btn-register').addEventListener('click', registerUser);
+        document.getElementById('btn-login').addEventListener('click', loginOrLogout);
+        document.getElementById('btn-profile').addEventListener('click', async () => {
+            // show profile bookings
+            const token = localStorage.getItem('token');
+            if (!token) return alert('Not signed in');
+            try {
+                const res = await fetch('/api/bookings/me', { headers: { Authorization: 'Bearer ' + token } });
+                if (!res.ok) return alert('Could not fetch your bookings');
+                const bookings = await res.json();
+                // render into bookings-list
+                const listEl = document.getElementById('bookings-list');
+                listEl.innerHTML = '<h3 style="margin:0;color:#1976d2">My Bookings</h3>';
+                if (!bookings.length) {
+                    listEl.innerHTML += '<div style="color:#666">You have no bookings.</div>';
+                    return;
+                }
+                bookings.forEach(b => {
+                    const card = document.createElement('div');
+                    card.style.padding = '0.8rem';
+                    card.style.border = '1px solid #e0e0e0';
+                    card.style.borderRadius = '6px';
+                    card.style.background = '#fafafa';
+                    card.innerHTML = `
+                        <strong>${b.from_location} → ${b.to_location}</strong>
+                        <div style="color:#555; font-size:0.95rem">Departure: ${b.departure_date || b.from_date} • Return: ${b.return_date || b.to_date}</div>
+                        <div style="color:#777; font-size:0.85rem">Type: ${b.travel_type || 'N/A'} • Created: ${new Date(b.created_at || b.createdAt || b.created_at).toLocaleString()}</div>
+                    `;
+                    listEl.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                alert('Error fetching profile');
             }
         });
+
+        // Initialize auth status from storage
+        (function initAuth() {
+            const uid = localStorage.getItem('userId');
+            const username = localStorage.getItem('username');
+            const token = localStorage.getItem('token');
+            if (uid && username && token) {
+                setAuthStatus({ id: uid, username });
+                document.getElementById('btn-profile').style.display = '';
+            } else {
+                setAuthStatus(null);
+                document.getElementById('btn-profile').style.display = 'none';
+            }
+        })();
     </script>
 </body>
 </html>

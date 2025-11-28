@@ -10,7 +10,8 @@ services:
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/smart_travel
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:13
@@ -21,6 +22,13 @@ services:
       POSTGRES_DB: smart_travel
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d smart_travel -h localhost -p 5432"]
+      interval: 5s
+      retries: 10
+      start_period: 5s
+      timeout: 2s
 
 volumes:
   db_data:
