@@ -327,11 +327,17 @@
         function renderSearchResults(results, preferred = '') {
             const container = document.getElementById('search-results');
             container.innerHTML = '';
-            const types = [
+            let types = [
                 { key: 'flights', label: 'Flights' },
                 { key: 'trains', label: 'Trains' },
                 { key: 'buses', label: 'Buses' }
             ];
+
+            // Filter types if a specific travel type is selected
+            if (preferred && preferred !== 'all') {
+                const selectedKey = preferred.toLowerCase() + 's'; // Convert 'flight' to 'flights'
+                types = types.filter(type => type.key === selectedKey);
+            }
 
             types.forEach(type => {
                 const section = document.createElement('div');

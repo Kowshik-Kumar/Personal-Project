@@ -1,4 +1,3 @@
-package backend;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -7,7 +6,125 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class Data {
+class User {
+    private String userId;
+    private String name;
+    private String email;
+    private double budget;
+
+    public User(String userId, String name, String email, double budget) {
+        this.userId = userId;
+        this.name = name;
+        this.email = email;
+        this.budget = budget;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public double getBudget() {
+        return budget;
+    }
+
+    public void setBudget(double budget) {
+        this.budget = budget;
+    }
+}
+
+class TravelOption {
+    private String id;
+    private String type; // e.g., "flight", "hotel", "bus"
+    private String name;
+    private double price;
+    private String location;
+    private Date availableFrom;
+    private Date availableTo;
+
+    public TravelOption(String id, String type, String name, double price, String location, Date availableFrom, Date availableTo) {
+        this.id = id;
+        this.type = type;
+        this.name = name;
+        this.price = price;
+        this.location = location;
+        this.availableFrom = availableFrom;
+        this.availableTo = availableTo;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public Date getAvailableFrom() {
+        return availableFrom;
+    }
+
+    public Date getAvailableTo() {
+        return availableTo;
+    }
+}
+
+class Booking {
+    private String bookingId;
+    private String userId;
+    private List<TravelOption> options;
+    private double totalCost;
+    private Date bookingDate;
+
+    public Booking(String bookingId, String userId, List<TravelOption> options, double totalCost, Date bookingDate) {
+        this.bookingId = bookingId;
+        this.userId = userId;
+        this.options = options;
+        this.totalCost = totalCost;
+        this.bookingDate = bookingDate;
+    }
+
+    public String getBookingId() {
+        return bookingId;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public List<TravelOption> getOptions() {
+        return options;
+    }
+
+    public double getTotalCost() {
+        return totalCost;
+    }
+
+    public Date getBookingDate() {
+        return bookingDate;
+    }
+}
+
+public class Main {
     private Map<String, User> users = new HashMap<>();
     private Map<String, TravelOption> travelOptions = new HashMap<>();
     private List<Booking> bookings = new ArrayList<>();
@@ -70,7 +187,7 @@ public class Data {
     }
 
     public static void main(String[] args) {
-        Data data = new Data();
+        Main data = new Main();
 
         // Create users
         User user1 = new User("1", "Alice", "alice@example.com", 2000.0);
@@ -87,7 +204,7 @@ public class Data {
         data.addTravelOption(bus1);
 
         // Search for options
-        List<TravelOption> parisOptions = data.searchOptions("Paris", 1000.0);
+        List<TravelOption> parisOptions = data.searchOptions("Paris", 2000.0);
         System.out.println("Available options in Paris with a budget of 1000.0:");
         for (TravelOption option : parisOptions) {
             System.out.println("- " + option.getName() + " ($" + option.getPrice() + ")");
